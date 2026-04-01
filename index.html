@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Whopathon Graphic Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --orange: #FA4616;
+  --midnight: #141212;
+  --snow: #FCF6F5;
+  --bg-main: #141212;
+  --bg-card: #1C1917;
+  --bg-input: #242020;
+  --border: rgba(255,255,255,0.1);
+  --text: #FCF6F5;
+  --muted: rgba(252,246,245,0.5);
+  --r: 12px;
+}
+body { font-family:'Space Grotesk',sans-serif; background:var(--bg-main); color:var(--text); min-height:100vh; padding:24px; }
+
+.header { display:flex; align-items:center; gap:14px; margin-bottom:28px; }
+.logo-box { background:var(--orange); border-radius:10px; width:44px; height:44px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.logo-box svg { width:28px; height:28px; }
+.header h1 { font-family:'Space Mono',monospace; font-size:20px; font-weight:700; }
+.header p { font-size:13px; color:var(--muted); margin-top:2px; }
+
+.layout { display:grid; grid-template-columns:340px 1fr; gap:24px; align-items:start; }
+
+.sidebar { display:flex; flex-direction:column; gap:14px; }
+.panel { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--r); overflow:hidden; }
+.panel-hd { padding:11px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:8px; }
+.panel-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.panel-title { font-size:11px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted); }
+.panel-body { padding:14px 16px; display:flex; flex-direction:column; gap:11px; }
+
+label { font-size:12px; color:var(--muted); display:block; margin-bottom:4px; }
+input[type="text"], textarea {
+  width:100%; background:var(--bg-input); border:1px solid var(--border); border-radius:8px;
+  color:var(--text); font-family:'Space Grotesk',sans-serif; font-size:13px; padding:8px 11px; outline:none; transition:border-color 0.2s;
+}
+input[type="text"]:focus, textarea:focus { border-color:var(--orange); }
+textarea { resize:vertical; min-height:52px; line-height:1.5; }
+
+.whop-swatches { display:flex; gap:8px; }
+.wswatch {
+  flex:1; padding:9px 6px; border-radius:8px; border:2px solid transparent;
+  cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:5px;
+  transition:border-color 0.2s;
+}
+.wswatch:hover { border-color:rgba(255,255,255,0.3); }
+.wswatch.active { border-color:white; }
+.wswatch-circle { width:28px; height:28px; border-radius:50%; border:1px solid rgba(255,255,255,0.2); }
+.wswatch-lbl { font-size:10px; font-weight:700; letter-spacing:0.3px; text-transform:uppercase; color:var(--muted); text-align:center; }
+
+.hex-row { display:flex; gap:8px; align-items:flex-end; }
+.hex-row input[type="text"] { font-family:'Space Mono',monospace; text-transform:uppercase; letter-spacing:1px; }
+.hex-preview { width:38px; height:38px; border-radius:8px; border:1px solid var(--border); flex-shrink:0; cursor:pointer; transition:transform 0.15s; }
+.hex-preview:hover { transform:scale(1.05); }
+input[type="color"] { width:0; height:0; opacity:0; position:absolute; }
+
+.fmt-row { display:flex; gap:8px; }
+.fmt-btn {
+  flex:1; padding:8px 6px; border-radius:8px; border:1px solid var(--border);
+  background:transparent; color:var(--muted); font-size:11px; font-weight:700;
+  cursor:pointer; transition:all 0.2s; font-family:'Space Grotesk',sans-serif; text-align:center;
+  display:flex; flex-direction:column; align-items:center; gap:3px;
+}
+.fmt-btn:hover { border-color:var(--orange); color:var(--text); }
+.fmt-btn.active { background:var(--orange); border-color:var(--orange); color:white; }
+.fmt-icon { font-size:15px; line-height:1; }
+.fmt-dim { font-size:10px; opacity:0.65; }
+
+.card-tabs { display:flex; gap:6px; flex-wrap:wrap; }
+.tab-btn {
+  flex:1; min-width:58px; padding:7px 4px; border-radius:8px; border:1px solid var(--border);
+  background:transparent; color:var(--muted); font-size:10px; font-weight:700;
+  cursor:pointer; transition:all 0.2s; font-family:'Space Grotesk',sans-serif; text-align:center;
+}
+.tab-btn:hover { border-color:var(--orange); color:var(--text); }
+.tab-btn.active { background:var(--orange); border-color:var(--orange); color:white; }
+
+.action-btn {
+  width:100%; padding:11px; border-radius:10px; border:none; cursor:pointer;
+  font-family:'Space Grotesk',sans-serif; font-size:13px; font-weight:700;
+  transition:opacity 0.2s, transform 0.15s;
+}
+.action-btn:hover { opacity:0.88; transform:translateY(-1px); }
+.action-btn:active { transform:translateY(0); }
+.btn-primary { background:var(--orange); color:white; }
+.btn-secondary { background:var(--bg-input); color:var(--text); border:1px solid var(--border); }
+
+.logo-upload {
+  width:100%; height:52px; border-radius:8px; background:var(--bg-input);
+  border:1px dashed var(--border); display:flex; align-items:center; justify-content:center;
+  font-size:12px; color:var(--muted); overflow:hidden; position:relative; cursor:pointer;
+}
+.logo-upload img { max-height:40px; max-width:100%; object-fit:contain; }
+.logo-upload input { position:absolute; inset:0; opacity:0; cursor:pointer; }
+.logo-clear { font-size:11px; color:var(--orange); cursor:pointer; margin-top:4px; display:none; }
+.toggle-row { display:flex; align-items:center; gap:8px; }
+.toggle-row input[type="checkbox"] { accent-color:var(--orange); width:14px; height:14px; cursor:pointer; }
+.toggle-row label { margin:0; cursor:pointer; font-size:12px; color:var(--muted); }
+
+.preview-area { display:flex; flex-direction:column; gap:14px; }
+.preview-label { display:flex; align-items:center; justify-content:space-between; }
+.preview-label span { font-size:11px; color:var(--muted); letter-spacing:1px; text-transform:uppercase; font-weight:700; }
+.preview-label small { font-size:11px; color:var(--muted); }
+.graphic-frame { width:100%; border-radius:14px; overflow:hidden; }
+
+#graphic-canvas {
+  width:100%; position:relative; overflow:hidden;
+  display:flex; align-items:center; justify-content:flex-start;
+}
+.gc-grid { position:absolute; inset:0; }
+.gc-glow { position:absolute; border-radius:50%; pointer-events:none; }
+.gc-bar { position:absolute; top:0; left:0; right:0; height:3px; }
+.gc-badge { position:absolute; z-index:3; font-family:'Space Grotesk',sans-serif; }
+.gc-uni { position:absolute; z-index:3; }
+.gc-content { position:relative; z-index:2; width:100%; }
+.gc-eyebrow { font-size:11px; letter-spacing:3px; text-transform:uppercase; font-weight:500; margin-bottom:10px; }
+.gc-title { font-family:'Space Mono',monospace; font-weight:700; line-height:1.05; margin-bottom:6px; }
+.gc-sub { font-size:13px; margin-bottom:20px; line-height:1.5; }
+.gc-date-box { display:inline-flex; align-items:center; gap:10px; border-radius:10px; padding:10px 16px; border:1px solid; }
+.gc-date-txt { font-size:14px; font-weight:700; }
+.gc-big-num { font-family:'Space Mono',monospace; font-size:72px; font-weight:700; line-height:1; margin-bottom:2px; }
+.gc-unit-lbl { font-family:'Space Mono',monospace; font-size:15px; letter-spacing:4px; text-transform:uppercase; margin-bottom:16px; }
+.gc-stats { display:flex; gap:10px; flex-wrap:wrap; }
+.gc-stat { border-radius:8px; padding:10px 14px; border:1px solid; text-align:center; }
+.gc-stat-n { font-family:'Space Mono',monospace; font-size:20px; font-weight:700; line-height:1; }
+.gc-stat-l { font-size:10px; text-transform:uppercase; letter-spacing:1px; margin-top:3px; }
+.gc-checks { display:flex; flex-direction:column; gap:8px; }
+.gc-check { display:flex; align-items:center; gap:10px; font-size:13px; }
+.gc-check-box { width:17px; height:17px; border-radius:4px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:10px; border:1px solid; }
+.gc-progress { position:absolute; bottom:0; left:0; right:0; height:3px; }
+.gc-progress-fill { height:100%; }
+.gc-pulse { width:8px; height:8px; border-radius:50%; animation:pulse 1.2s infinite; flex-shrink:0; display:inline-block; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.7)} }
+
+.mini-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.mini-card { cursor:pointer; border-radius:8px; overflow:hidden; border:2px solid transparent; transition:border-color 0.2s; }
+.mini-inner { display:flex; align-items:center; justify-content:center; position:relative; }
+
+@media(max-width:900px){ .layout { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo-box">
+    <svg viewBox="0 0 24 24" fill="none"><path d="M4 6L8.5 18L12 10L15.5 18L20 6" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </div>
+  <div>
+    <h1>WHOPATHON</h1>
+    <p>Event graphic generator Â· Brand kit edition</p>
+  </div>
+</div>
+
+<div class="layout">
+<div class="sidebar">
+
+  <!-- Graphic type + format -->
+  <div class="panel">
+    <div class="panel-hd"><div class="panel-dot" style="background:var(--orange)"></div><span class="panel-title">Graphic type</span></div>
+    <div class="panel-body">
+      <div>
+        <label>Card</label>
+        <div class="card-tabs">
+          <button class="tab-btn active" onclick="setCard('savedate',0)">Save the Date</button>
+          <button class="tab-btn" onclick="setCard('week',1)">1 Week Left</button>
+          <button class="tab-btn" onclick="setCard('tomorrow',2)">Tomorrow</button>
+          <button class="tab-btn" onclick="setCard('recap',3)">Wrap Up</button>
+        </div>
+      </div>
+      <div>
+        <label>Format</label>
+        <div class="fmt-row">
+          <button class="fmt-btn active" onclick="setFormat('landscape',this)">
+            <span class="fmt-icon">â¬</span>Landscape<span class="fmt-dim">1200Ã628</span>
+          </button>
+          <button class="fmt-btn" onclick="setFormat('square',this)">
+            <span class="fmt-icon">â </span>Square<span class="fmt-dim">1080Ã1080</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Copy editor -->
+  <div class="panel">
+    <div class="panel-hd"><div class="panel-dot" style="background:var(--orange)"></div><span class="panel-title">Edit copy</span></div>
+    <div class="panel-body" id="copyFields" style="gap:10px"></div>
+  </div>
+
+  <!-- Whop brand: only orange / black / white -->
+  <div class="panel">
+    <div class="panel-hd"><div class="panel-dot" style="background:var(--orange)"></div><span class="panel-title">Whop brand</span></div>
+    <div class="panel-body">
+      <label>Color theme</label>
+      <div class="whop-swatches">
+        <div class="wswatch active" data-theme="dark" onclick="setTheme(this)">
+          <div class="wswatch-circle" style="background:#FA4616"></div>
+          <span class="wswatch-lbl">Orange + Black</span>
+        </div>
+        <div class="wswatch" data-theme="mono" onclick="setTheme(this)">
+          <div class="wswatch-circle" style="background:#FCF6F5;border-color:rgba(0,0,0,0.15)"></div>
+          <span class="wswatch-lbl">Black + White</span>
+        </div>
+        <div class="wswatch" data-theme="snow" onclick="setTheme(this)">
+          <div class="wswatch-circle" style="background:#FCF6F5;border-color:rgba(0,0,0,0.15)"></div>
+          <span class="wswatch-lbl">White + Orange</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- University brand: HEX first -->
+  <div class="panel">
+    <div class="panel-hd"><div class="panel-dot" style="background:#6366F1"></div><span class="panel-title">University brand</span></div>
+    <div class="panel-body">
+      <div>
+        <label>University name</label>
+        <input type="text" id="uniName" placeholder="e.g. Michigan State University" oninput="render()">
+      </div>
+      <div>
+        <label>Primary color HEX</label>
+        <div class="hex-row">
+          <input type="text" id="uni1Hex" value="#6366F1" maxlength="7" placeholder="#000000" oninput="onHex('uni1')">
+          <div class="hex-preview" id="uni1Prev" style="background:#6366F1" onclick="document.getElementById('uni1Pick').click()" title="Open color picker"></div>
+          <input type="color" id="uni1Pick" value="#6366F1" oninput="onPick('uni1',this.value)">
+        </div>
+      </div>
+      <div>
+        <label>Secondary color HEX</label>
+        <div class="hex-row">
+          <input type="text" id="uni2Hex" value="#A5B4FC" maxlength="7" placeholder="#000000" oninput="onHex('uni2')">
+          <div class="hex-preview" id="uni2Prev" style="background:#A5B4FC" onclick="document.getElementById('uni2Pick').click()" title="Open color picker"></div>
+          <input type="color" id="uni2Pick" value="#A5B4FC" oninput="onPick('uni2',this.value)">
+        </div>
+      </div>
+      <div>
+        <label>University logo (optional)</label>
+        <div class="logo-upload" id="logoArea">
+          <span id="logoPlaceholder">Click to upload logo</span>
+          <img id="logoImg" style="display:none">
+          <input type="file" accept="image/*" onchange="loadLogo(this)">
+        </div>
+        <span class="logo-clear" id="logoClear" onclick="clearLogo()">â Remove logo</span>
+      </div>
+      <div class="toggle-row">
+        <input type="checkbox" id="showUni" checked onChange="render()">
+        <label for="showUni">Show university branding on graphic</label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Export -->
+  <div class="panel">
+    <div class="panel-hd"><div class="panel-dot" style="background:#22C55E"></div><span class="panel-title">Export</span></div>
+    <div class="panel-body">
+      <button class="action-btn btn-primary" id="dlBtn" onclick="exportPNG(event)">â¬ Download this graphic</button>
+      <button class="action-btn btn-secondary" id="dlAllBtn" onclick="exportAll(event)">â¬ Download all 4 graphics</button>
+    </div>
+  </div>
+
+</div><!-- /sidebar -->
+
+<!-- PREVIEW -->
+<div class="preview-area">
+  <div class="preview-label">
+    <span>Live preview</span>
+    <small id="fmtLabel">1200 Ã 628 Â· Landscape</small>
+  </div>
+  <div class="graphic-frame">
+    <div id="graphic-canvas">
+      <div class="gc-grid" id="gcGrid"></div>
+      <div class="gc-glow" id="glow1"></div>
+      <div class="gc-glow" id="glow2"></div>
+      <div class="gc-bar" id="gcBar"></div>
+      <div class="gc-badge" id="gcBadge"></div>
+      <div class="gc-uni" id="gcUni"></div>
+      <div class="gc-content" id="gcContent"></div>
+      <div class="gc-progress" id="gcProg" style="display:none"><div class="gc-progress-fill" id="gcProgFill"></div></div>
+    </div>
+  </div>
+  <div>
+    <div class="preview-label" style="margin-bottom:10px"><span>All 4 graphics</span></div>
+    <div class="mini-grid" id="miniGrid"></div>
+  </div>
+</div>
+
+</div><!-- /layout -->
+
+<script>
+// ââââââââââââââââââââââââââââââââââââââââââââââââ
+// STATE
+// ââââââââââââââââââââââââââââââââââââââââââââââââ
+const S = {
+  card: 'savedate',
+  format: 'landscape',
+  theme: 'dark',
+  uni1: '#6366F1',
+  uni2: '#A5B4FC',
+  uniLogo: null,
+  copy: {
+    savedate: {
+      eyebrow: 'Whop presents',
+      title:   'Whopathon',
+      tagline: 'Build. Launch. Win. 48 hours to ship a real digital business.',
+      date:    'April 25â27, 2025 Â· Live + In-Person',
+      badge:   'Save the date',
+      url:     'whopathon.whop.com',
+    },
+    week: {
+      eyebrow:   'Registration closes in',
+      countdown: '7',
+      unit:      'days left',
+      tagline:   "Don't miss your shot to build & launch a real business.",
+      stats:     '48h Sprint,$0 To Start,1M+ Users',
+      badge:     'Whopathon',
+      url:       'whopathon.whop.com',
+    },
+    tomorrow: {
+      preheader: 'GET READY â',
+      title:     'Whopathon Starts Now.',
+      check1:    'Pack your laptop',
+      check2:    'Bring your idea (or find one there)',
+      check3:    'Leave with a live business on Whop',
+      badge:     'Happening tomorrow',
+      url:       'whopathon.whop.com',
+    },
+    recap: {
+      eyebrow: 'Whopathon Â· Post-event recap',
+      line1:   'We built.',
+      line2:   'We launched.',
+      line3:   'What a run.',
+      tagline: 'Thank you for building with us. Real businesses. Real results.',
+      stats:   '48h Sprint,100+ Builders,60+ Whops',
+      badge:   "That's a wrap ð",
+      url:     'whopathon.whop.com',
+    },
+  },
+};
+
+// ââââââââââââââââââââââââââââââââââââââââââââââââ
+// THEME TOKENS  (Whop brand: orange, black, white only)
+// ââââââââââââââââââââââââââââââââââââââââââââââââ
+function T() {
+  const themes = {
+    dark:  { bg:'#141212', primary:'#FA4616', text:'#FCF6F5', sub:'rgba(252,246,245,0.45)', grid:'rgba(255,255,255,0.04)', badgeBg:'#FA4616', badgeText:'#fff' },
+    mono:  { bg:'#141212', primary:'#FCF6F5', text:'#FCF6F5', sub:'rgba(252,246,245,0.45)', grid:'rgba(255,255,255,0.04)', badgeBg:'#FCF6F5', badgeText:'#141212' },
+    snow:  { bg:'#FCF6F5', primary:'#FA4616', text:'#141212', sub:'rgba(20,18,18,0.5)',      grid:'rgba(0,0,0,0.05)',       badgeBg:'#FA4616', badgeText:'#fff' },
+  };
+  return themes[S.theme];
+}
+
+function rgba(hex, a) {
+  if (!hex || hex.length < 4) return `rgba(0,0,0,${a})`;
+  let h = hex.replace('#','');
+  if (h.length===3) h = h.split('').map(c=>c+c).join('');
+  const r=parseInt(h.slice(0,2),16), g=parseInt(h.slice(2,4),16), b=parseInt(h.slice(4,6),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+// ââââââââââââââââââââââââââââââââââââââââââââââââ
+// COPY FIELDS
+// ââââââââââââââââââââââââââââââââââââââââââââââââ
+const COPY_DEFS = {
+  savedate: [
+    { k:'eyebrow', l:'Eyebrow text' },
+    { k:'title',   l:'Event name' },
+    { k:'tagline', l:'Tagline', ta:1 },
+    { k:'date',    l:'Date & location' },
+    { k:'badge',   l:'Badge label (top right)' },
+    { k:'url',     l:'Website URL' },
+  ],
+  week: [
+    { k:'eyebrow',   l:'Eyebrow text' },
+    { k:'countdown', l:'Countdown number' },
+    { k:'unit',      l:'Countdown unit' },
+    { k:'tagline',   l:'Subtext', ta:1 },
+    { k:'stats',     l:'Stats â format: value label, value label', ta:1 },
+    { k:'badge',     l:'Badge label (top right)' },
+    { k:'url',       l:'Website URL' },
+  ],
+  tomorrow: [
+    { k:'preheader', l:'Pre-header line' },
+    { k:'title',     l:'Main headline' },
+    { k:'check1',    l:'Checklist item 1' },
+    { k:'check2',    l:'Checklist item 2' },
+    { k:'check3',    l:'Checklist item 3' },
+    { k:'badge',     l:'Badge label (top right)' },
+    { k:'url',       l:'Website URL' },
+  ],
+  recap: [
+    { k:'eyebrow', l:'Eyebrow text' },
+    { k:'line1',   l:'Headline line 1' },
+    { k:'line2',   l:'Headline line 2' },
+    { k:'line3',   l:'Headline line 3 (accent color)' },
+    { k:'tagline', l:'Subtext', ta:1 },
+    { k:'stats',   l:'Stats â format: value label, value label', ta:1 },
+    { k:'badge',   l:'Badge label (top right)' },
+    { k:'url',     l:'Website URL' },
+  ],
+};
+
+function buildCopyFields() {
+  const defs = COPY_DEFS[S.card];
+  document.getElementById('copyFields').innerHTML = defs.map(f => {
+    const v = (S.copy[S.card][f.k]||'').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+    return `<div>
+      <label>${f.l}</label>
+      ${f.ta
+        ? `<textarea oninput="setCopy('${f.k}',this.value)">${S.copy[S.card][f.k]||''}</textarea>`
+        : `<input type="text" value="${v}" oninput="setCopy('${f.k}',this.value)">`
+      }
+    </div>`;
+  }).join('');
+}
+function setCopy(k, v) { S.copy[S.card][k] = v; render(); }
+
+// ââââââââââââââââââââââââââââââââââââââââââââââââ
+// CONTROLS
+// ââââââââââââââââââââââââââââââââââââââââââââââââ
+function setCard(type, idx) {
+  S.card = type;
+  document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', i===idx));
+  buildCopyFields();
+  render();
+}
+function setFormat(fmt, btn) {
+  S.format = fmt;
+  document.querySelectorAll('.fmt-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('fmtLabel').textContent = fmt==='square' ? '1080 Ã 1080 Â· Square' : '1200 Ã 628 Â· Landscape';
+  render();
+}
+function setTheme(el) {
+  S.theme = el.dataset.theme;
+  document.querySelectorAll('.wswatch').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  render();
+}
+
+// ââââââââââââââââââââââââââââââââââââââââââââââââ
+// UNI COLORS
+// ââââââââââââââââââââââââââââââââââââââââââââââââ
+function onHex(w) {
+  let v = document.getElementById(w+'Hex').value.trim();
+  if (!v.startsWith('#')) v = '#'+v;
+  if (/^#[0-9a-fA-F]{6}$/.test(v)) {
+    S[w] = v;
+    document.getElementById(w+'Prev').style.background = v;
+    document.getElementById(w+'Pick').value = v;
+    render();
+  }
+}
+function onPick(w, v) {
+  S[w] = v;
+  document.getElementById(w+'Hex').value = v.toUpperCase();
+  document.getElementById(w+'Prev').style.background = v;
+  render();
+}
+
+// ââââââââââââââââââââââââââââââââââââââââââââââââ
+// LOGO
+// ââââââââââââââââââââââââââââââââââââââââââââââââ
+function loadLogo(input) {
+  const f = input.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = e => {
+    S.uniLogo = e.target.result;
+    document.getElementById('logoImg').src = e.target.result;
+    document.getElementById('logoImg').style.display = 'block';
+    document.getElementById('logoPlaceholder').style.display = 'none';
+    document.getElementById('logoClear').style.display = 'block';
+    render();
+  };
+  r.readAsDataURL(f);
+}
+function clearLogo() {
+  S.uniLogo = null;
+  document.getElementById('logoImg').style.display = 'none';
+  document.getElementById('logoPlaceholder').style.display = 'block';
+  document.getElementById('logoClear').style.display = 'none';
+  render();
+}
+
+// ââââââââââââââââââââââââââââââââââââââââââââââââ
+// RENDER
+// ââââââââââââââââââââââââââââââââââââââââââââââââ
+function parseStats(raw) {
+  return (raw||'').split(',').map(s => {
+    const p = s.trim().split(' ');
+    return { n: p[0]||'', l: p.slice(1).join(' ') };
+  }).filter(s => s.n);
+}
+
+function render() {
+  const tk = T();
+  const c  = S.copy[S.card];
+  const sq = S.format === 'square';
+  const showUni = document.getElementById('showUni').checked;
+  const uniName = (document.getElementById('uniName').value||'').trim();
+
+  // Canvas
+  const canvas = document.getElementById('graphic-canvas');
+  canvas.style.background = tk.bg;
+  canvas.style.aspectRatio = sq ? '1/1' : '1.91/1';
+  canvas.style.padding = sq ? '36px' : '34px 46px';
+
+  // Grid
+  document.getElementById('gcGrid').style.backgroundImage =
+    `linear-gradient(${tk.grid} 1px,transparent 1px),linear-gradient(90deg,${tk.grid} 1px,transparent 1px)`;
+  document.getElementById('gcGrid').style.backgroundSize = '40px 40px';
+
+  // Glows
+  const g1 = document.getElementById('glow1');
+  const g2 = document.getElementById('glow2');
+  g1.style.cssText = `position:absolute;border-radius:50%;pointer-events:none;width:280px;height:280px;top:-70px;right:-50px;background:radial-gradient(circle,${rgba(tk.primary,0.2)} 0%,transparent 70%)`;
+  g2.style.cssText = `position:absolute;border-radius:50%;pointer-events:none;width:160px;height:160px;bottom:-40px;left:60px;background:radial-gradient(circle,${rgba(S.uni1,0.15)} 0%,transparent 70%)`;
+
+  // Accent bar
+  document.getElementById('gcBar').style.background = `linear-gradient(90deg,${tk.primary},${showUni?S.uni1:tk.primary})`;
+
+  // University branding (bottom right)
+  const uniEl = document.getElementById('gcUni');
+  const uniPos = sq ? 'bottom:20px;right:24px;' : 'bottom:20px;right:36px;';
+  uniEl.style.cssText = uniPos + 'text-align:right;z-index:3;position:absolute;';
+  if (showUni && S.uniLogo) {
+    uniEl.innerHTML = `<img src="${S.uniLogo}" style="max-height:32px;max-width:100px;object-fit:contain;display:block;margin-left:auto">`;
+    if (uniName) uniEl.innerHTML += `<div style="font-size:10px;color:${rgba(tk.text,0.35)};letter-spacing:0.8px;margin-top:3px">${uniName}</div>`;
+  } else if (showUni && uniName) {
+    uniEl.innerHTML = `<div style="font-size:11px;color:${rgba(tk.text,0.35)};letter-spacing:0.8px">${uniName}</div>`;
+  } else {
+    uniEl.innerHTML = `<div style="font-size:11px;color:${rgba(tk.text,0.3)};letter-spacing:0.8px">${c.url||'whopathon.whop.com'}</div>`;
+  }
+
+  // Progress bar off by default
+  const prog = document.getElementById('gcProg');
+  prog.style.display = 'none';
+
+  const content  = document.getElementById('gcContent');
+  const badge    = document.getElementById('gcBadge');
+  const badgePos = sq ? 'top:22px;right:22px;' : 'top:22px;right:36px;';
+  const titleSz  = sq ? '52px' : '44px';
+  const recapSz  = sq ? '46px' : '38px';
+
+  // ââ SAVE THE DATE ââ
+  if (S.card === 'savedate') {
+    badge.style.cssText = badgePos + `background:${tk.badgeBg};color:${tk.badgeText};font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:7px 14px;border-radius:6px;border:none;`;
+    badge.textContent = c.badge || 'Save the date';
+
+    const nameUp = (c.title||'Whopathon').toUpperCase();
+    const nameHtml = nameUp.includes('WHOPATHON')
+      ? nameUp.replace('WHOPATHON', `WHOP<span style="color:${tk.primary}">ATHON</span>`)
+      : `<span style="color:${tk.primary}">${nameUp}</span>`;
+
+    content.innerHTML = `
+      <div class="gc-eyebrow" style="color:${tk.primary}">${c.eyebrow||''}</div>
+      <div class="gc-title" style="font-size:${titleSz};color:${tk.text};margin-bottom:6px">${nameHtml}</div>
+      <div class="gc-sub" style="color:${tk.sub}">${c.tagline||''}</div>
+      <div class="gc-date-box" style="background:${rgba(tk.primary,0.1)};border-color:${rgba(tk.primary,0.3)}">
+        <span style="font-size:15px">ð</span>
+        <span class="gc-date-txt" style="color:${tk.primary}">${c.date||''}</span>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:16px">
+        ${[0,1,2,3].map(i=>`<div style="width:6px;height:6px;border-radius:50%;background:${i===0?tk.primary:rgba(tk.text,0.2)}"></div>`).join('')}
+      </div>`;
+
+  // ââ ONE WEEK LEFT ââ
+  } else if (S.card === 'week') {
+    badge.style.cssText = badgePos + `background:transparent;color:${tk.primary};border:1px solid ${rgba(tk.primary,0.45)};font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:7px 14px;border-radius:6px;`;
+    badge.textContent = c.badge || 'Whopathon';
+
+    const stats = parseStats(c.stats);
+    content.innerHTML = `
+      <div class="gc-eyebrow" style="color:${tk.primary}">${c.eyebrow||''}</div>
+      <div class="gc-big-num" style="color:${tk.primary}">${c.countdown||'7'}</div>
+      <div class="gc-unit-lbl" style="color:${rgba(tk.text,0.3)}">${c.unit||'days left'}</div>
+      <div class="gc-sub" style="color:${tk.sub};margin-bottom:14px">${c.tagline||''}</div>
+      <div class="gc-stats">${stats.map(s=>`
+        <div class="gc-stat" style="background:${rgba(tk.primary,0.08)};border-color:${rgba(tk.primary,0.22)}">
+          <div class="gc-stat-n" style="color:${tk.primary}">${s.n}</div>
+          <div class="gc-stat-l" style="color:${rgba(tk.text,0.4)}">${s.l}</div>
+        </div>`).join('')}
+      </div>`;
+    prog.style.display = 'block';
+    prog.style.background = 'rgba(255,255,255,0.07)';
+    document.getElementById('gcProgFill').style.cssText = `width:85%;background:${tk.primary}`;
+
+  // ââ HAPPENING TOMORROW ââ
+  } else if (S.card === 'tomorrow') {
+    badge.style.cssText = badgePos + `background:transparent;color:${tk.primary};border:1px solid ${rgba(tk.primary,0.4)};font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:7px 14px;border-radius:6px;`;
+    badge.innerHTML = `<span style="display:inline-flex;align-items:center;gap:6px"><span class="gc-pulse" style="background:${tk.primary}"></span>${c.badge||'Happening tomorrow'}</span>`;
+
+    const rawTitle = c.title || 'Whopathon Starts Now.';
+    const titleUp  = rawTitle.toUpperCase();
+    const titleHtml = titleUp.includes('WHOPATHON')
+      ? titleUp.replace('WHOPATHON', `WHOP<span style="color:${tk.primary}">ATHON</span>`)
+      : titleUp;
+
+    content.innerHTML = `
+      <div class="gc-title" style="font-size:15px;color:${rgba(tk.text,0.38)};margin-bottom:4px">${c.preheader||'GET READY â'}</div>
+      <div class="gc-title" style="font-size:${titleSz};color:${tk.text};margin-bottom:18px">${titleHtml}</div>
+      <div class="gc-checks">
+        ${[c.check1,c.check2,c.check3].filter(Boolean).map(txt=>`
+          <div class="gc-check">
+            <div class="gc-check-box" style="background:${rgba(tk.primary,0.15)};border-color:${rgba(tk.primary,0.4)};color:${tk.primary}">â</div>
+            <span style="color:${rgba(tk.text,0.75)}">${txt}</span>
+          </div>`).join('')}
+      </div>`;
+
+  // ââ WRAP UP ââ
+  } else if (S.card === 'recap') {
+    badge.style.cssText = badgePos + `background:transparent;color:${rgba(tk.text,0.55)};border:none;font-size:13px;font-weight:700;padding:0;letter-spacing:0;text-transform:none;`;
+    badge.textContent = c.badge || "That's a wrap ð";
+    document.getElementById('gcBar').style.background = `linear-gradient(90deg,${tk.primary},${showUni?S.uni1:tk.primary},${tk.primary})`;
+
+    const stats = parseStats(c.stats);
+    content.innerHTML = `
+      <div class="gc-eyebrow" style="color:${tk.primary}">${c.eyebrow||''}</div>
+      <div class="gc-title" style="font-size:${recapSz};color:${tk.text};margin-bottom:8px">
+        ${c.line1||'We built.'}<br>${c.line2||'We launched.'}<br>
+        <span style="color:${tk.primary}">${c.line3||'What a run.'}</span>
+      </div>
+      <div class="gc-sub" style="color:${tk.sub};margin-bottom:14px">${c.tagline||''}</div>
+      <div class="gc-stats">${stats.map(s=>`
+        <div class="gc-stat" style="background:${rgba(tk.text,0.04)};border-color:${rgba(tk.text,0.1)}">
+          <div class="gc-stat-n" style="color:${tk.primary}">${s.n}</div>
+          <div class="gc-stat-l" style="color:${rgba(tk.text,0.4)}">${s.l}</div>
+        </div>`).join('')}
+      </div>`;
+  }
+
+  renderMini();
+}
+
+// ââââââââââââââââââââââââââââââââââââââââââââââââ
+// MINI GRID
+// ââââââââââââââââââââââââââââââââââââââââââââââââ
+function renderMini() {
+  const tk = T();
+  const cards  = ['savedate','week','tomorrow','recap'];
+  const labels = ['Save the Date','1 Week Left','Tomorrow','Wrap Up'];
+  const sq = S.format === 'square';
+  document.getElementById('miniGrid').innerHTML = cards.map((c,i) => `
+    <div class="mini-card" style="border-color:${S.card===c?tk.primary:'transparent'}" onclick="setCard('${c}',${i})">
+      <div class="mini-inner" style="background:${tk.bg};aspect-ratio:${sq?'1/1':'1.91/1'}">
+        <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.04) 1px,transparent 1px);background-size:28px 28px"></div>
+        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:${tk.primary}"></div>
+        <span style="font-family:'Space Mono',monospace;font-size:10px;color:${rgba(tk.text,0.5)};position:relative;z-index:1">${labels[i]}</span>
+      </div>
+    </div>`).join('');
+}
+
+// ââââââââââââââââââââââââââââââââââââââââââââââââ
+// EXPORT
+// ââââââââââââââââââââââââââââââââââââââââââââââââ
+async function exportPNG(e) {
+  const btn = e.currentTarget;
+  btn.textContent = 'Exporting...'; btn.disabled = true;
+  try {
+    const cvs = await html2canvas(document.getElementById('graphic-canvas'), { scale:2, useCORS:true, backgroundColor:T().bg, logging:false });
+    const a = document.createElement('a');
+    a.download = `whopathon-${S.card}-${S.format}.png`;
+    a.href = cvs.toDataURL('image/png'); a.click();
+  } catch(err) { alert('Export failed â try a browser screenshot instead.'); }
+  btn.textContent = 'â¬ Download this graphic'; btn.disabled = false;
+}
+
+async function exportAll(e) {
+  const btn = e.currentTarget;
+  btn.textContent = 'Exporting all...'; btn.disabled = true;
+  const cards = ['savedate','week','tomorrow','recap'];
+  const saved = S.card;
+  for (const c of cards) {
+    S.card = c; buildCopyFields(); render();
+    await new Promise(r => setTimeout(r, 500));
+    try {
+      const cvs = await html2canvas(document.getElementById('graphic-canvas'), { scale:2, useCORS:true, backgroundColor:T().bg, logging:false });
+      const a = document.createElement('a');
+      a.download = `whopathon-${c}-${S.format}.png`;
+      a.href = cvs.toDataURL('image/png'); a.click();
+      await new Promise(r => setTimeout(r, 350));
+    } catch(err) {}
+  }
+  S.card = saved; buildCopyFields(); render();
+  btn.textContent = 'â¬ Download all 4 graphics'; btn.disabled = false;
+}
+
+// ââââââââââââââââââââââââââââââââââââââââââââââââ
+// INIT
+// ââââââââââââââââââââââââââââââââââââââââââââââââ
+buildCopyFields();
+render();
+</script>
+</body>
+</html>
